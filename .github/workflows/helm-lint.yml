@@ -2,6 +2,7 @@ name: Helm Chart Validation
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened]
     branches: [ main ]
     paths:
       - 'Chart.yaml'
