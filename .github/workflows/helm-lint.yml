@@ -3,18 +3,18 @@ name: Helm Chart Validation
 on:
   pull_request:
     types: [opened, synchronize, reopened]
-    branches: [ main ]
+    branches: [main]
     paths:
-      - 'Chart.yaml'
-      - 'values.yaml'
-      - 'templates/**'
-      - '.github/workflows/helm-lint.yml'
+      - "Chart.yaml"
+      - "values.yaml"
+      - "templates/**"
+      - ".github/workflows/helm-lint.yml"
 
 jobs:
   helm-lint:
     name: Helm Lint and Validate
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -42,8 +42,8 @@ jobs:
           # Test with KEDA enabled
           helm template inngest-test . \
             --set keda.enabled=true \
-            --set inngest.eventKey=test-key \
-            --set inngest.signingKey=test-signing-key \
+            --set inngest.eventKey=1234 \
+            --set inngest.signingKey=1234 \
             --debug --dry-run > /dev/null
 
       - name: Validate Required Values
@@ -59,7 +59,7 @@ jobs:
   security-scan:
     name: Security Scanning
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -78,10 +78,10 @@ jobs:
         run: |
           echo "Running security scan on templates..."
           helm template inngest-test . \
-            --set inngest.eventKey=test-key \
-            --set inngest.signingKey=test-signing-key \
+            --set inngest.eventKey=1234 \
+            --set inngest.signingKey=1234 \
             > rendered-templates.yaml
-          
+
           # Run kubesec scan
           kubesec scan rendered-templates.yaml
 
@@ -89,15 +89,15 @@ jobs:
         run: |
           echo "Validating security contexts..."
           helm template inngest-test . \
-            --set inngest.eventKey=test-key \
-            --set inngest.signingKey=test-signing-key | \
+            --set inngest.eventKey=1234 \
+            --set inngest.signingKey=1234 | \
           grep -E "(runAsNonRoot|readOnlyRootFilesystem|allowPrivilegeEscalation)" || \
           (echo "⚠️  Security contexts may not be properly configured" && exit 0)
 
   chart-testing:
     name: Chart Testing
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -112,7 +112,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: "3.12"
 
       - name: Install chart-testing
         uses: helm/chart-testing-action@v2.6.1
@@ -128,16 +128,16 @@ jobs:
           # Create test values that include required keys
           cat > test-values.yaml << EOF
           inngest:
-            eventKey: "test-event-key"
-            signingKey: "test-signing-key-that-is-long-enough"
+            eventKey: "1234"
+            signingKey: "1234"
           EOF
-          
+
           ct install --target-branch ${{ github.event.repository.default_branch }} --helm-extra-set-args "--values=test-values.yaml"
 
   documentation:
     name: Documentation Check
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -149,7 +149,7 @@ jobs:
             echo "❌ Chart.yaml not found"
             exit 1
           fi
-          
+
           # Check required fields
           for field in name version description; do
             if ! grep -q "^${field}:" Chart.yaml; then
