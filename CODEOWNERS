@@ -1,0 +1,11 @@
+# Chart, templates and values
+Chart.yaml @AndyInternet
+values.yaml @AndyInternet
+/templates @AndyInternet
+
+# CI/CD and automation
+.github/ @AndyInternet
+
+# Documentation
+README.md @AndyInternet
+CLAUDE.md @AndyInternet
