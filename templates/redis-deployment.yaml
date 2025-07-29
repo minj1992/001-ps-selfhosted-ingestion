@@ -1,0 +1,83 @@
+{{/*
+Redis Cache Deployment
+Internal Redis instance for Inngest caching and pub/sub messaging.
+Only deployed when redis.enabled is true.
+
+This deployment provides:
+- In-memory caching for improved Inngest performance
+- Pub/sub messaging between Inngest components
+- Optional persistent storage for cache durability
+- Single replica (suitable for development; use Redis Cluster for production HA)
+
+For production environments, consider using external managed Redis services
+like AWS ElastiCache, Google Cloud Memorystore, or Redis Enterprise Cloud
+for better reliability, scaling, and high availability.
+*/}}
+{{- if .Values.redis.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "inngest.redis.fullname" . }}
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "inngest.labels" . | nindent 4 }}
+    app.kubernetes.io/component: redis
+spec:
+  # Single replica deployment - not suitable for production HA
+  # Use external Redis cluster for production workloads
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "inngest.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: redis
+  template:
+    metadata:
+      labels:
+        {{- include "inngest.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: redis
+    spec:
+      containers:
+        # Redis cache container
+        - name: redis
+          image: "{{ .Values.redis.image.repository }}:{{ .Values.redis.image.tag }}"
+          imagePullPolicy: {{ .Values.redis.image.pullPolicy }}
+          ports:
+            # Standard Redis port
+            - name: redis
+              containerPort: 6379
+              protocol: TCP
+          # Health check that restarts container if Redis becomes unresponsive
+          livenessProbe:
+            tcpSocket:
+              port: redis              # Check if Redis port is accepting connections
+            initialDelaySeconds: 30    # Wait for Redis to start
+            periodSeconds: 5           # Check every 5 seconds
+            timeoutSeconds: 5          # Timeout after 5 seconds
+            successThreshold: 1
+            failureThreshold: 5        # Restart after 5 failures
+          # Health check that determines when Redis is ready to serve requests
+          readinessProbe:
+            exec:
+              command:
+                - redis-cli            # Use Redis CLI to ping server
+                - ping
+            initialDelaySeconds: 20    # Initial startup time
+            periodSeconds: 3           # Check every 3 seconds
+            timeoutSeconds: 5          # Timeout after 5 seconds
+            successThreshold: 1
+            failureThreshold: 5        # Mark unready after 5 failures
+          {{- if .Values.redis.persistence.enabled }}
+          # Mount persistent volume for Redis data (optional - Redis is primarily in-memory)
+          volumeMounts:
+            - name: data
+              mountPath: /data          # Redis data directory
+          {{- end }}
+      {{- if .Values.redis.persistence.enabled }}
+      # Persistent storage for Redis data (optional for cache durability)
+      # Note: Redis is primarily an in-memory cache, persistence is for durability
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ include "inngest.redis.fullname" . }}
+      {{- end }}
+{{- end }}

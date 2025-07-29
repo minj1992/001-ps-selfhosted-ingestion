@@ -1,0 +1,107 @@
+{{/*
+PostgreSQL Database Deployment
+Internal PostgreSQL instance for Inngest state management and job storage.
+Only deployed when postgresql.enabled is true.
+
+This deployment provides:
+- Persistent database storage for Inngest events, functions, and execution history
+- Secure credential management via Kubernetes Secrets
+- Health checks for reliability
+- Single replica (suitable for development; use external PostgreSQL for production HA)
+
+For production environments, consider using external managed PostgreSQL services
+for better reliability, backup management, and high availability.
+*/}}
+{{- if .Values.postgresql.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "inngest.postgresql.fullname" . }}
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "inngest.labels" . | nindent 4 }}
+    app.kubernetes.io/component: postgresql
+spec:
+  # Single replica deployment - not suitable for production HA
+  # Use external PostgreSQL for production workloads
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "inngest.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: postgresql
+  template:
+    metadata:
+      labels:
+        {{- include "inngest.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: postgresql
+    spec:
+      containers:
+        # PostgreSQL database container
+        - name: postgresql
+          image: "{{ .Values.postgresql.image.repository }}:{{ .Values.postgresql.image.tag }}"
+          imagePullPolicy: {{ .Values.postgresql.image.pullPolicy }}
+          ports:
+            # Standard PostgreSQL port
+            - name: postgresql
+              containerPort: 5432
+              protocol: TCP
+          # Database configuration from Kubernetes Secret (secure credential storage)
+          env:
+            # Database name for Inngest data
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "inngest.postgresql.fullname" . }}
+                  key: postgres-database
+            # Database username
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "inngest.postgresql.fullname" . }}
+                  key: postgres-username
+            # Database password (securely stored in Secret)
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "inngest.postgresql.fullname" . }}
+                  key: postgres-password
+          # Health check that restarts container if PostgreSQL becomes unresponsive
+          livenessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - exec pg_isready -U {{ .Values.postgresql.auth.username | quote }} -d {{ .Values.postgresql.auth.database | quote }} -h 127.0.0.1 -p 5432
+            initialDelaySeconds: 30    # Wait for PostgreSQL to start
+            periodSeconds: 10          # Check every 10 seconds
+            timeoutSeconds: 5          # Timeout after 5 seconds
+            failureThreshold: 6        # Restart after 6 failures
+            successThreshold: 1
+          # Health check that determines when PostgreSQL is ready to accept connections
+          readinessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - -e
+                - |
+                  exec pg_isready -U {{ .Values.postgresql.auth.username | quote }} -d {{ .Values.postgresql.auth.database | quote }} -h 127.0.0.1 -p 5432
+            initialDelaySeconds: 5     # Quick initial check
+            periodSeconds: 10          # Check every 10 seconds
+            timeoutSeconds: 5          # Timeout after 5 seconds
+            failureThreshold: 6        # Mark unready after 6 failures
+            successThreshold: 1
+          {{- if .Values.postgresql.persistence.enabled }}
+          # Mount persistent volume for database data
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data  # PostgreSQL data directory
+          {{- end }}
+      {{- if .Values.postgresql.persistence.enabled }}
+      # Persistent storage for database data (survives pod restarts)
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ include "inngest.postgresql.fullname" . }}
+      {{- end }}
+{{- end }}

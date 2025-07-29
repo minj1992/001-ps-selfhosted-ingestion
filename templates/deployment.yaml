@@ -1,0 +1,181 @@
+{{/*
+Inngest Main Application Deployment
+This template creates the primary Inngest application deployment which includes:
+- Main Inngest container running the event-driven platform
+- Optional Prometheus sidecar for KEDA autoscaling (when keda.enabled=true)
+- Security contexts for non-root execution and read-only filesystem
+- Health checks for liveness and readiness probes
+
+The deployment uses consistent naming ("inngest") regardless of Helm release name
+to ensure predictable resource references across environments.
+*/}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "inngest.fullname" . }}
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "inngest.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.keda.enabled }}
+  # Static replica count when KEDA is disabled
+  # When KEDA is enabled, it manages the replica count dynamically
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "inngest.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "inngest.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "inngest.serviceAccountName" . }}
+      # Pod-level security context - runs as non-root user for security
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        # Main Inngest application container
+        - name: {{ .Chart.Name }}
+          # Container-level security context - read-only filesystem, dropped capabilities
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          # Start the Inngest server process
+          command: ["inngest", "start"]
+          ports:
+            # Main Inngest API and UI port (8288)
+            - name: http
+              containerPort: {{ .Values.service.port }}
+              protocol: TCP
+            # Inngest Connect service port for function registration (8289)
+            - name: connect
+              containerPort: {{ .Values.service.uiPort }}
+              protocol: TCP
+          # Health check that restarts container if it becomes unresponsive
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          # Health check that determines when container is ready to receive traffic
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          env:
+            {{- if .Values.postgresql.enabled }}
+            # When using internal PostgreSQL, get connection URI from secret (secure)
+            - name: INNGEST_POSTGRES_URI
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "inngest.postgresql.fullname" . }}
+                  key: postgres-uri
+            {{- end }}
+          # Load configuration from ConfigMap and secrets
+          envFrom:
+            # Non-sensitive configuration (ports, log levels, etc.)
+            - configMapRef:
+                name: {{ include "inngest.fullname" . }}
+            # Sensitive configuration (event keys, signing keys)
+            - secretRef:
+                name: {{ include "inngest.fullname" . }}
+          # Volume mounts for writable directories (required for read-only filesystem)
+          volumeMounts:
+            - name: tmp-volume
+              mountPath: /tmp
+            - name: inngest-data
+              mountPath: /data
+        {{- if .Values.keda.enabled }}
+        # Prometheus sidecar container - scrapes Inngest metrics for KEDA autoscaling
+        # This container runs alongside the main Inngest container and provides
+        # a Prometheus-compatible API that KEDA can query for scaling decisions
+        - name: prometheus-sidecar
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.prometheus.image.repository }}:{{ .Values.prometheus.image.tag }}"
+          imagePullPolicy: {{ .Values.prometheus.image.pullPolicy }}
+          ports:
+            # Prometheus API port for KEDA to query metrics
+            - name: prometheus
+              containerPort: 9090
+              protocol: TCP
+          # Prometheus server configuration
+          args:
+            - --config.file=/etc/prometheus/prometheus.yml
+            - --storage.tsdb.path=/prometheus/
+            - --storage.tsdb.retention.time=1h  # Short retention for sidecar use
+            - --web.console.libraries=/etc/prometheus/console_libraries
+            - --web.console.templates=/etc/prometheus/consoles
+            - --web.enable-lifecycle
+            - --web.listen-address=0.0.0.0:9090
+          volumeMounts:
+            # Prometheus configuration from ConfigMap
+            - name: prometheus-config
+              mountPath: /etc/prometheus
+            # Inngest signing key for authenticated metrics scraping
+            - name: inngest-signing-key
+              mountPath: /etc/secrets
+            # Writable volumes for Prometheus data (required for read-only filesystem)
+            - name: prometheus-data
+              mountPath: /prometheus
+            - name: prometheus-tmp
+              mountPath: /tmp
+          resources:
+            {{- toYaml .Values.prometheus.resources | nindent 12 }}
+        {{- end }}
+      volumes:
+        # Temporary volumes required for read-only root filesystem security
+        # These provide writable space for applications that need it
+        - name: tmp-volume
+          emptyDir: {}
+        - name: inngest-data
+          emptyDir: {}
+        {{- if .Values.keda.enabled }}
+        # KEDA Prometheus sidecar configuration
+        - name: prometheus-config
+          configMap:
+            name: {{ include "inngest.fullname" . }}-prometheus-config
+        # Inngest signing key secret for Prometheus authentication
+        - name: inngest-signing-key
+          secret:
+            secretName: {{ include "inngest.fullname" . }}
+            items:
+              - key: INNGEST_SIGNING_KEY
+                path: inngest-signing-key
+        # Writable volumes for Prometheus sidecar (read-only filesystem requirement)
+        - name: prometheus-data
+          emptyDir: {}
+        - name: prometheus-tmp
+          emptyDir: {}
+        {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

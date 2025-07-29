@@ -1,0 +1,38 @@
+{{/*
+Redis Persistent Volume Claim
+Optional storage allocation for Redis cache data persistence.
+Only created when redis.enabled and redis.persistence.enabled are both true.
+
+This PVC provides:
+- Optional persistent storage for Redis data durability
+- Configurable storage size and access modes
+- Optional storage class specification
+
+Note: Redis is primarily an in-memory cache. Persistence is optional and
+mainly useful for cache warming or durability requirements. For pure caching
+workloads, you may disable persistence to improve performance.
+*/}}
+{{- if and .Values.redis.enabled .Values.redis.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "inngest.redis.fullname" . }}
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "inngest.labels" . | nindent 4 }}
+    app.kubernetes.io/component: redis
+spec:
+  # Access modes define how the volume can be mounted
+  accessModes:
+    {{- range .Values.redis.persistence.accessModes }}
+    - {{ . | quote }}  # Typically "ReadWriteOnce" for Redis data
+    {{- end }}
+  # Storage size request (smaller than PostgreSQL since Redis is in-memory)
+  resources:
+    requests:
+      storage: {{ .Values.redis.persistence.size | quote }}  # Default: 8Gi
+  {{- if .Values.redis.persistence.storageClass }}
+  # Storage class for specific storage types
+  storageClassName: {{ .Values.redis.persistence.storageClass | quote }}
+  {{- end }}
+{{- end }}

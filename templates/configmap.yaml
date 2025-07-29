@@ -1,0 +1,59 @@
+{{/*
+Inngest Configuration
+Kubernetes ConfigMap containing non-sensitive Inngest environment variables.
+
+This ConfigMap stores:
+- Server configuration (host, ports, polling intervals)
+- Performance tuning parameters (workers, tick rate, retry intervals)
+- Logging configuration (log level, JSON format, verbosity)
+- External service URLs (PostgreSQL, Redis, SQLite directories)
+
+Sensitive values like event keys and signing keys are stored separately
+in a Kubernetes Secret for security.
+*/}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "inngest.fullname" . }}
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "inngest.labels" . | nindent 4 }}
+data:
+  # Server configuration
+  {{- if .Values.inngest.config }}
+  INNGEST_CONFIG: {{ .Values.inngest.config | quote }}  # Path to additional config file
+  {{- end }}
+  {{- if .Values.inngest.host }}
+  INNGEST_HOST: {{ .Values.inngest.host | quote }}       # Server hostname
+  {{- end }}
+  INNGEST_PORT: {{ .Values.inngest.port | quote }}       # Main server port (8288)
+  {{- if .Values.inngest.sdkUrl }}
+  INNGEST_SDK_URL: {{ join "," .Values.inngest.sdkUrl | quote }}  # App URLs for function sync
+  {{- end }}
+  INNGEST_CONNECT_GATEWAY_PORT: {{ .Values.inngest.connectGatewayPort | quote }}  # Connect service port (8289)
+  # UI and performance configuration
+  {{- if .Values.inngest.noUI }}
+  INNGEST_NO_UI: "true"                             # Disable web UI
+  {{- end }}
+  INNGEST_POLL_INTERVAL: {{ .Values.inngest.pollInterval | quote }}    # App polling interval (seconds)
+  INNGEST_QUEUE_WORKERS: {{ .Values.inngest.queueWorkers | quote }}     # Number of worker threads
+  INNGEST_RETRY_INTERVAL: {{ .Values.inngest.retryInterval | quote }}   # Retry backoff interval (seconds)
+  INNGEST_TICK: {{ .Values.inngest.tick | quote }}                      # Queue polling interval (milliseconds)
+  # Logging configuration
+  {{- if .Values.inngest.json }}
+  INNGEST_JSON: "true"                              # Output logs in JSON format
+  {{- end }}
+  INNGEST_LOG_LEVEL: {{ .Values.inngest.logLevel | quote }}             # Log level (trace, debug, info, warn, error)
+  {{- if .Values.inngest.verbose }}
+  INNGEST_VERBOSE: "true"                           # Enable verbose logging
+  {{- end }}
+  # Database configuration (only for external databases)
+  {{- if and (not .Values.postgresql.enabled) .Values.inngest.postgres.uri }}
+  INNGEST_POSTGRES_URI: {{ .Values.inngest.postgres.uri | quote }}      # External PostgreSQL URI
+  {{- end }}
+  {{- if include "inngest.redis.uri" . }}
+  INNGEST_REDIS_URI: {{ include "inngest.redis.uri" . | quote }}         # Redis connection URI
+  {{- end }}
+  {{- if .Values.inngest.sqlite.dir }}
+  INNGEST_SQLITE_DIR: {{ .Values.inngest.sqlite.dir | quote }}           # SQLite data directory
+  {{- end }}

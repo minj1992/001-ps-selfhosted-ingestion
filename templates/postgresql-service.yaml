@@ -1,0 +1,35 @@
+{{/*
+PostgreSQL Service
+Kubernetes Service for internal PostgreSQL database access.
+Only created when postgresql.enabled is true.
+
+This service provides:
+- Internal cluster access to PostgreSQL database (port 5432)
+- Service discovery for Inngest application
+- Load balancing across PostgreSQL pods (though typically single replica)
+
+The service uses ClusterIP type for internal access only.
+External database access should use external PostgreSQL services.
+*/}}
+{{- if .Values.postgresql.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "inngest.postgresql.fullname" . }}
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "inngest.labels" . | nindent 4 }}
+    app.kubernetes.io/component: postgresql
+spec:
+  type: ClusterIP  # Internal cluster access only
+  ports:
+    # PostgreSQL database port
+    - port: {{ .Values.postgresql.service.port }}  # Service port (5432)
+      targetPort: postgresql                       # Container port name
+      protocol: TCP
+      name: postgresql
+  # Route traffic to PostgreSQL pods
+  selector:
+    {{- include "inngest.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: postgresql
+{{- end }}

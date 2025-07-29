@@ -1,0 +1,37 @@
+{{/*
+PostgreSQL Persistent Volume Claim
+Storage allocation for PostgreSQL database data.
+Only created when postgresql.enabled and postgresql.persistence.enabled are both true.
+
+This PVC provides:
+- Persistent storage that survives pod restarts and redeployments
+- Configurable storage size and access modes
+- Optional storage class specification for different storage types
+
+Storage is typically mounted at /var/lib/postgresql/data in the PostgreSQL container.
+Ensure your cluster has adequate storage capacity and appropriate storage classes.
+*/}}
+{{- if and .Values.postgresql.enabled .Values.postgresql.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "inngest.postgresql.fullname" . }}
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "inngest.labels" . | nindent 4 }}
+    app.kubernetes.io/component: postgresql
+spec:
+  # Access modes define how the volume can be mounted
+  accessModes:
+    {{- range .Values.postgresql.persistence.accessModes }}
+    - {{ . | quote }}  # Typically "ReadWriteOnce" for database storage
+    {{- end }}
+  # Storage size request
+  resources:
+    requests:
+      storage: {{ .Values.postgresql.persistence.size | quote }}  # Default: 8Gi
+  {{- if .Values.postgresql.persistence.storageClass }}
+  # Storage class for specific storage types (SSD, HDD, etc.)
+  storageClassName: {{ .Values.postgresql.persistence.storageClass | quote }}
+  {{- end }}
+{{- end }}

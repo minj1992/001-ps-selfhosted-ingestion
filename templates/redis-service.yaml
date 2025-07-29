@@ -1,0 +1,35 @@
+{{/*
+Redis Service
+Kubernetes Service for internal Redis cache access.
+Only created when redis.enabled is true.
+
+This service provides:
+- Internal cluster access to Redis cache (port 6379)
+- Service discovery for Inngest application
+- Load balancing across Redis pods (though typically single replica)
+
+The service uses ClusterIP type for internal access only.
+For external Redis access, use external Redis services or Redis clusters.
+*/}}
+{{- if .Values.redis.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "inngest.redis.fullname" . }}
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "inngest.labels" . | nindent 4 }}
+    app.kubernetes.io/component: redis
+spec:
+  type: ClusterIP  # Internal cluster access only
+  ports:
+    # Redis cache port
+    - port: {{ .Values.redis.service.port }}  # Service port (6379)
+      targetPort: redis                        # Container port name
+      protocol: TCP
+      name: redis
+  # Route traffic to Redis pods
+  selector:
+    {{- include "inngest.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: redis
+{{- end }}

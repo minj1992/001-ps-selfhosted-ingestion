@@ -1,0 +1,19 @@
+apiVersion: v2
+name: inngest
+description: A Helm chart for self-hosting Inngest on Kubernetes
+type: application
+version: 0.1.0
+appVersion: "latest"
+icon: https://www.inngest.com/favicon-june-2025-light.svg
+keywords:
+  - inngest
+  - event-driven
+  - serverless
+  - functions
+home: https://www.inngest.com
+sources:
+  - https://github.com/inngest/inngest
+maintainers:
+  - name: Inngest Team
+    email: support@inngest.com
+kubeVersion: ">=1.20.0-0"
