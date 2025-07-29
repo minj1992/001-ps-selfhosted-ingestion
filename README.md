@@ -13,7 +13,7 @@ A Helm chart for deploying Inngest on Kubernetes clusters.
 
 ## Installation
 
-### Quick Start with Internal Dependencies
+### Quick Start with Internal Postgres and Redis
 
 Deploy Inngest with bundled PostgreSQL and Redis instances:
 
@@ -418,10 +418,6 @@ After deployment, you can access Inngest through:
 kubectl port-forward svc/inngest 8288:8288 -n inngest
 # Access UI at http://localhost:8288
 ```
-
-### Ingress (Production)
-
-For external access with ingress, see the dedicated ingress example in the examples section below.
 
 ### Service URLs for Applications
 
