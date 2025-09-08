@@ -1,0 +1,27 @@
+{{- if .Values.istio.enabled }}
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: {{ include "inngest.fullname" . }}-vs
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "inngest.labels" . | nindent 4 }}
+spec:
+  hosts:
+    - {{ .Values.ingress.hosts[0].host | quote }}
+  gateways:
+    # This should be the name of your Istio gateway, e.g., "istio-system/ingressgateway"
+    # You might need to create a Gateway resource for your host.
+    - public-gateway.istio-system.svc.cluster.local # placeholder
+  http:
+    - match:
+        - uri:
+            prefix: "/inngest"
+      rewrite:
+        uri: "/"
+      route:
+        - destination:
+            host: {{ include "inngest.fullname" . }}.{{ .Values.namespace.name }}.svc.cluster.local
+            port:
+              number: {{ .Values.service.port }}
+{{- end }}

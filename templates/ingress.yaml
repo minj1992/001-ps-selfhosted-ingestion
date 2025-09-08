@@ -20,9 +20,15 @@ spec:
             pathType: {{ .pathType | quote }}
             backend:
               service:
-                name: ps-ingestion-service
+                {{- if .Values.istio.enabled }}
+                name: istio-ingressgateway
+                port:
+                  number: 80
+                {{- else }}
+                name: inngest-rewrite
                 port:
                   number: {{ $.Values.service.port }}
+                {{- end }}
           {{- end }}
     {{- end }}
   {{- if .Values.ingress.tls }}
