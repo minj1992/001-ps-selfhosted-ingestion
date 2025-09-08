@@ -53,14 +53,13 @@ ingress:
       {"Type": "redirect", "RedirectConfig": { "Protocol": "HTTPS", "Port": "443", "StatusCode": "HTTP_301"}}
   hosts:
     - host: devopslogs.com
-      paths:
-        - path: /inngest
-          pathType: ImplementationSpecific
-          backend:
-            service:
-              name: inngest
-              port:
-                number: 8288
+  paths:
+    - path: /inngest
+      pathType: ImplementationSpecific
+      backend:
+        serviceName: inngest
+        servicePort: 8288
+
   tls:
     - secretName: inngest-tls
       hosts:
