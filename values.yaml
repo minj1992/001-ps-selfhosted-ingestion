@@ -4,7 +4,7 @@ replicaCount: 1
 image:
   repository: inngest/inngest
   pullPolicy: IfNotPresent
-  tag: "latest"   # ⚠️ In prod: pin to a specific version
+  tag: "latest"
 
 namespace:
   create: true
@@ -37,7 +37,6 @@ service:
   port: 8288
   connPort: 8289
 
-# ✅ AWS ALB ingress configuration
 ingress:
   enabled: true
   className: "alb"
@@ -66,12 +65,9 @@ nodeSelector: {}
 tolerations: []
 affinity: {}
 
-# ✅ Inngest configuration
 inngest:
-  inngest:
   eventKey: "abcd1234abcd1234abcd1234abcd1234"
-  signingKey: "efab5678efab5678efab5678efab5678"
-
+  signingKey: "0123456789abcdef0123456789abcdef"   # ✅ Valid hex key
   config: ""
   host: ""
   port: "8288"
@@ -86,13 +82,12 @@ inngest:
   logLevel: "info"
   verbose: false
   postgres:
-    uri: ""   # leave blank, using internal postgres
+    uri: ""
   redis:
-    uri: ""   # leave blank, using internal redis
+    uri: ""
   sqlite:
     dir: ""
 
-# ✅ Internal PostgreSQL
 postgresql:
   enabled: true
   image:
@@ -102,7 +97,7 @@ postgresql:
   auth:
     database: inngest
     username: inngest
-    password: secure_password   # ⚠️ Change in production
+    password: secure_password
   service:
     port: 5432
   resources:
@@ -115,11 +110,10 @@ postgresql:
   persistence:
     enabled: true
     size: 8Gi
-    storageClass: ""
+    storageClass: gp2      # ✅ Use default AWS EBS
     accessModes:
       - ReadWriteOnce
 
-# ✅ Internal Redis
 redis:
   enabled: true
   image:
@@ -138,11 +132,10 @@ redis:
   persistence:
     enabled: true
     size: 8Gi
-    storageClass: ""
+    storageClass: gp2      # ✅ Use default AWS EBS
     accessModes:
       - ReadWriteOnce
 
-# KEDA autoscaling (disabled for now)
 keda:
   enabled: false
   minReplicas: 1
@@ -163,7 +156,6 @@ networkPolicy:
   ingress: []
   egress: []
 
-# Prometheus sidecar for KEDA (optional)
 prometheus:
   image:
     repository: prom/prometheus
