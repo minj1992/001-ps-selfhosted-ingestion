@@ -1,28 +1,34 @@
 # Number of Inngest application replicas
 replicaCount: 1
 
+# Container image
 image:
   repository: inngest/inngest
   pullPolicy: IfNotPresent
-  tag: "latest"
+  tag: "latest"  # ⚠️ In prod: pin to a specific version
 
+# Kubernetes namespace
 namespace:
   create: true
   name: "inngest"
 
+# ServiceAccount
 serviceAccount:
   create: true
   annotations: {}
   name: ""
 
+# Pod annotations
 podAnnotations: {}
 
+# Pod security context
 podSecurityContext:
   runAsNonRoot: true
   runAsUser: 1000
   runAsGroup: 1000
   fsGroup: 1000
 
+# Container security context
 securityContext:
   allowPrivilegeEscalation: false
   readOnlyRootFilesystem: true
@@ -32,11 +38,13 @@ securityContext:
     drop:
       - ALL
 
+# Kubernetes Service
 service:
   type: ClusterIP
   port: 8288
   connPort: 8289
 
+# ALB Ingress configuration
 ingress:
   enabled: true
   className: "alb"
@@ -59,15 +67,17 @@ ingress:
       hosts:
         - devopslogs.com
 
+# Resources (optional)
 resources: {}
 
 nodeSelector: {}
 tolerations: []
 affinity: {}
 
+# Inngest configuration
 inngest:
-  eventKey: "abcd1234abcd1234abcd1234abcd1234"
-  signingKey: "0123456789abcdef0123456789abcdef"   # ✅ Valid hex key
+  eventKey: "0123456789abcdef0123456789abcdef"      # ⚠️ Replace with your secure hex key
+  signingKey: "fedcba9876543210fedcba9876543210"    # ⚠️ Replace with your secure hex key
   config: ""
   host: ""
   port: "8288"
@@ -81,13 +91,19 @@ inngest:
   json: false
   logLevel: "info"
   verbose: false
+
+  # Internal Postgres connection
   postgres:
-    uri: ""
+    uri: "postgresql://inngest:secure_password@inngest-postgresql:5432/inngest"
+
+  # Internal Redis connection
   redis:
-    uri: ""
+    uri: "redis://inngest-redis:6379"
+
   sqlite:
     dir: ""
 
+# Internal PostgreSQL
 postgresql:
   enabled: true
   image:
@@ -97,7 +113,7 @@ postgresql:
   auth:
     database: inngest
     username: inngest
-    password: secure_password
+    password: secure_password   # ⚠️ Change for production
   service:
     port: 5432
   resources:
@@ -110,10 +126,11 @@ postgresql:
   persistence:
     enabled: true
     size: 8Gi
-    storageClass: gp2      # ✅ Use default AWS EBS
+    storageClass: "gp2"   # Match your AWS EBS storage class
     accessModes:
       - ReadWriteOnce
 
+# Internal Redis
 redis:
   enabled: true
   image:
@@ -132,10 +149,11 @@ redis:
   persistence:
     enabled: true
     size: 8Gi
-    storageClass: gp2      # ✅ Use default AWS EBS
+    storageClass: "gp2"
     accessModes:
       - ReadWriteOnce
 
+# KEDA (disabled)
 keda:
   enabled: false
   minReplicas: 1
@@ -151,11 +169,13 @@ keda:
         threshold: "10"
         query: inngest_queue_depth
 
+# Network policies
 networkPolicy:
   enabled: false
   ingress: []
   egress: []
 
+# Prometheus sidecar (for KEDA)
 prometheus:
   image:
     repository: prom/prometheus
