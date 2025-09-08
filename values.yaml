@@ -41,16 +41,8 @@ securityContext:
 # Kubernetes Service
 service:
   type: ClusterIP
-  port: 8288        # Main HTTP port
-  connPort: 8289    # Connect gateway port
-
-# Deployment container ports (matches service)
-deployment:
-  containerPorts:
-    - name: http
-      containerPort: 8288
-    - name: connect
-      containerPort: 8289
+  port: 8288
+  connPort: 8289
 
 # ALB Ingress configuration
 ingress:
@@ -62,18 +54,12 @@ ingress:
     alb.ingress.kubernetes.io/target-type: ip
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80},{"HTTPS":443}]'
     alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-east-1:180294213274:certificate/80474a93-77c2-4f5b-be79-dd10961904f8
+    alb.ingress.kubernetes.io/load-balancer-arn: arn:aws:elasticloadbalancing:us-east-1:180294213274:loadbalancer/app/k8s-argocd-argocdse-c5d356d97e/868b402e3416b7dc
     alb.ingress.kubernetes.io/actions.ssl-redirect: >
       {"Type": "redirect", "RedirectConfig": { "Protocol": "HTTPS", "Port": "443", "StatusCode": "HTTP_301"}}
   hosts:
     - host: devopslogs.com
       paths:
-        - path: /inngest
-          pathType: Prefix
-          backend:
-            service:
-              name: inngest
-              port:
-                number: 8288
         - path: /inngest/
           pathType: Prefix
           backend:
@@ -85,7 +71,6 @@ ingress:
     - secretName: inngest-tls
       hosts:
         - devopslogs.com
-
 
 # Resources (optional)
 resources: {}
@@ -146,7 +131,7 @@ postgresql:
   persistence:
     enabled: true
     size: 8Gi
-    storageClass: "gp2"
+    storageClass: "gp2"   # Match your AWS EBS storage class
     accessModes:
       - ReadWriteOnce
 
