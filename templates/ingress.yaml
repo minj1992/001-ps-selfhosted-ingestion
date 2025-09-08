@@ -13,20 +13,16 @@ metadata:
 spec:
   ingressClassName: {{ .Values.ingress.className }}
   rules:
-    {{- range .Values.ingress.hosts }}
-    - host: {{ .host | quote }}
+    - host: {{ .Values.ingress.hosts[0].host | quote }}
       http:
         paths:
-          {{- range .paths }}
-          - path: {{ .path }}
-            pathType: {{ .pathType | default "ImplementationSpecific" }}
+          - path: /inngest/*
+            pathType: ImplementationSpecific
             backend:
               service:
-                name: {{ .serviceName | default "inngest-rewrite" }}
+                name: ps-ingestion-service   # actual Inngest service
                 port:
-                  number: {{ .servicePort | default 80 }}
-          {{- end }}
-    {{- end }}
+                  number: 8288
   {{- if .Values.ingress.tls }}
   tls:
     {{- range .Values.ingress.tls }}

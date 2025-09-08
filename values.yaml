@@ -54,19 +54,16 @@ ingress:
     alb.ingress.kubernetes.io/target-type: ip
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80},{"HTTPS":443}]'
     alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-east-1:180294213274:certificate/80474a93-77c2-4f5b-be79-dd10961904f8
-    alb.ingress.kubernetes.io/actions.inngest-rewrite: >
-      {"Type":"forward","ForwardConfig":{"TargetGroups":[{"ServiceName":"ps-ingestion-service","ServicePort":"8288"}]}}
   hosts:
     - host: devopslogs.com
       paths:
         - path: /inngest/*
           pathType: ImplementationSpecific
-          serviceName: inngest-rewrite
-          servicePort: 80
   tls:
     - secretName: inngest-tls
       hosts:
         - devopslogs.com
+
 
 # Resources
 resources: {}
