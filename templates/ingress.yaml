@@ -1,15 +1,9 @@
-{{/*
-Inngest Ingress
-Kubernetes Ingress resource for external access to Inngest services.
-Only created when ingress.enabled is true.
-*/}}
 {{- if .Values.ingress.enabled -}}
 {{- $fullName := include "inngest.fullname" . -}}
 {{- $svcPort := .Values.service.port -}}
 {{- if and .Values.ingress.className (not (hasKey .Values.ingress.annotations "kubernetes.io/ingress.class")) }}
-  {{- $_ := set .Values.ingress.annotations "kubernetes.io/ingress.class" .Values.ingress.className}}
+  {{- $_ := set .Values.ingress.annotations "kubernetes.io/ingress.class" .Values.ingress.className }}
 {{- end }}
-
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -21,7 +15,6 @@ metadata:
   annotations:
     {{- toYaml . | nindent 4 }}
   {{- end }}
-
 spec:
   {{- if .Values.ingress.className }}
   ingressClassName: {{ .Values.ingress.className }}
@@ -36,15 +29,14 @@ spec:
       secretName: {{ .secretName }}
     {{- end }}
   {{- end }}
-
   rules:
     {{- range .Values.ingress.hosts }}
     - host: {{ .host | quote }}
       http:
         paths:
           {{- range .paths }}
-          - path: {{ .path | trimSuffix "/" }}   # ⚠️ Remove trailing slash for ALB
-            pathType: {{ default "Prefix" .pathType }}
+          - path: {{ .path }}   # no trailing slash
+            pathType: Prefix
             backend:
               service:
                 name: {{ $fullName }}
