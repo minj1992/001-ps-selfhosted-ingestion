@@ -41,8 +41,8 @@ securityContext:
 # Kubernetes Service
 service:
   type: ClusterIP
-  port: 8288       # Main Inngest UI/API port
-  connPort: 8289   # Connect service port
+  port: 8288
+  connPort: 8289
 
 # ALB Ingress configuration
 ingress:
@@ -54,14 +54,15 @@ ingress:
     alb.ingress.kubernetes.io/target-type: ip
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80},{"HTTPS":443}]'
     alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-east-1:180294213274:certificate/80474a93-77c2-4f5b-be79-dd10961904f8
-    alb.ingress.kubernetes.io/load-balancer-arn: arn:aws:elasticloadbalancing:us-east-1:180294213274:loadbalancer/app/k8s-argocd-argocdse-c5d356d97e/868b402e3416b7dc
     alb.ingress.kubernetes.io/actions.ssl-redirect: >
       {"Type": "redirect", "RedirectConfig": { "Protocol": "HTTPS", "Port": "443", "StatusCode": "HTTP_301"}}
+    alb.ingress.kubernetes.io/actions.inngest-rewrite: >
+      {"Type": "forward", "ForwardConfig": {"TargetGroups": [{"ServiceName": "ps-ingestion-service", "ServicePort": "8288"}]}}
   hosts:
     - host: devopslogs.com
       paths:
-        - path: /inngest
-          pathType: Prefix
+        - path: /inngest/*
+          pathType: ImplementationSpecific
   tls:
     - secretName: inngest-tls
       hosts:
@@ -76,14 +77,14 @@ affinity: {}
 
 # Inngest configuration
 inngest:
-  eventKey: "0123456789abcdef0123456789abcdef"
-  signingKey: "fedcba9876543210fedcba9876543210"
+  eventKey: "0123456789abcdef0123456789abcdef"      # ⚠️ Replace with your secure hex key
+  signingKey: "fedcba9876543210fedcba9876543210"    # ⚠️ Replace with your secure hex key
   config: ""
   host: ""
   port: "8288"
   sdkUrl: []
   connectGatewayPort: 8289
-  noUI: false      # ⚠️ UI enabled
+  noUI: false
   pollInterval: 60
   queueWorkers: 100
   retryInterval: 1
@@ -92,9 +93,11 @@ inngest:
   logLevel: "info"
   verbose: false
 
+  # Internal Postgres connection
   postgres:
     uri: "postgresql://inngest:secure_password@inngest-postgresql:5432/inngest"
 
+  # Internal Redis connection
   redis:
     uri: "redis://inngest-redis:6379"
 
@@ -154,18 +157,6 @@ redis:
 # KEDA (disabled)
 keda:
   enabled: false
-  minReplicas: 1
-  maxReplicas: 10
-  pollingInterval: 30
-  cooldownPeriod: 300
-  scaleTargetRef:
-    name: inngest
-  triggers:
-    - type: prometheus
-      metadata:
-        metricName: inngest_queue_depth
-        threshold: "10"
-        query: inngest_queue_depth
 
 # Network policies
 networkPolicy:
@@ -173,7 +164,7 @@ networkPolicy:
   ingress: []
   egress: []
 
-# Prometheus sidecar
+# Prometheus sidecar (for KEDA)
 prometheus:
   image:
     repository: prom/prometheus
