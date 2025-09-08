@@ -39,12 +39,6 @@ securityContext:
       - ALL
 
 # Kubernetes Service
-service:
-  type: ClusterIP
-  port: 8288
-  connPort: 8289
-
-# ALB Ingress configuration
 ingress:
   enabled: true
   className: "alb"
@@ -60,12 +54,18 @@ ingress:
   hosts:
     - host: devopslogs.com
       paths:
-        - path: /inngest/
-          pathType: Prefix
+        - path: /inngest
+          pathType: ImplementationSpecific
+          backend:
+            service:
+              name: inngest
+              port:
+                number: 8288
   tls:
     - secretName: inngest-tls
       hosts:
         - devopslogs.com
+
 
 # Resources (optional)
 resources: {}
