@@ -6,8 +6,10 @@ metadata:
   namespace: {{ .Values.namespace.name }}
   labels:
     {{- include "inngest.labels" . | nindent 4 }}
-    annotations:
+  annotations:
     {{- toYaml .Values.ingress.annotations | nindent 4 }}
+spec:
+  ingressClassName: {{ .Values.ingress.className | quote }}
   rules:
     {{- range .Values.ingress.hosts }}
     - host: {{ .host | quote }}
