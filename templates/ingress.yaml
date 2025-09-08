@@ -1,31 +1,8 @@
 {{/*
 Inngest Ingress
-Kubernetes Ingress resource for external access to Inngest services.
-Only created when ingress.enabled is true.
-
-This ingress provides:
-- External HTTP/HTTPS access to the Inngest UI and API (port 8288)
-- TLS termination support
-- Custom annotations for ingress controller configuration
-- Kubernetes 1.20+ networking.k8s.io/v1 API
-
-Note: This ingress only exposes the main Inngest port (8288) for UI and API access.
-The Connect service port (8289) is typically used internally by applications
-and may not need external exposure.
-
-Security Warning: When exposing Inngest through ingress, the web UI and GraphQL 
-endpoints are publicly accessible unless protected. This example disables the UI for 
-security. If you need the UI, implement proper authentication/authorization at the 
-ingress level.
-
-Configure your DNS to point to the ingress controller's IP address.
 */}}
 {{- if .Values.ingress.enabled -}}
 {{- $fullName := include "inngest.fullname" . -}}
-{{- $svcPort := .Values.service.port -}}
-{{- if and .Values.ingress.className (not (hasKey .Values.ingress.annotations "kubernetes.io/ingress.class")) }}
-  {{- $_ := set .Values.ingress.annotations "kubernetes.io/ingress.class" .Values.ingress.className}}
-{{- end }}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -34,43 +11,40 @@ metadata:
   labels:
     {{- include "inngest.labels" . | nindent 4 }}
   {{- with .Values.ingress.annotations }}
-  # Ingress controller specific annotations (e.g., nginx.ingress.kubernetes.io/*)
   annotations:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
   {{- if .Values.ingress.className }}
-  # Ingress class (e.g., "nginx", "traefik", "alb")
   ingressClassName: {{ .Values.ingress.className }}
   {{- end }}
   {{- if .Values.ingress.tls }}
-  # TLS configuration for HTTPS access
   tls:
     {{- range .Values.ingress.tls }}
     - hosts:
         {{- range .hosts }}
-        - {{ . | quote }}  # Domain name for TLS certificate
+        - {{ . | quote }}
         {{- end }}
-      secretName: {{ .secretName }}  # Kubernetes Secret containing TLS certificate
+      secretName: {{ .secretName }}
     {{- end }}
   {{- end }}
-  # Ingress routing rules
   rules:
     {{- range .Values.ingress.hosts }}
-    - host: {{ .host | quote }}  # Domain name (e.g., inngest.example.com)
+    - host: {{ .host | quote }}
       http:
         paths:
           {{- range .paths }}
-          - path: {{ .path }}  # URL path (e.g., "/", "/api/*")
+          - path: {{ .path }}
             {{- if .pathType }}
-            pathType: {{ .pathType }}  # Path matching type (Prefix, Exact, ImplementationSpecific)
+            pathType: {{ .pathType }}
+            {{- else }}
+            pathType: Prefix
             {{- end }}
             backend:
-              # Kubernetes 1.20+ service backend format
               service:
-                name: {{ $fullName }}     # Target service name
+                name: {{ $fullName }}
                 port:
-                  number: {{ $svcPort }}   # Target service port (8288)
+                  number: 8288   # 🔥 Force correct backend port
           {{- end }}
     {{- end }}
 {{- end }}
