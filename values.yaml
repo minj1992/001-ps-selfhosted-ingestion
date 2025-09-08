@@ -41,11 +41,15 @@ securityContext:
 # Kubernetes Service
 service:
   type: ClusterIP
-  port: 8288
-  connPort: 8289
+  ports:
+    - name: http
+      port: 8288
+      targetPort: 8288   # numeric targetPort
+    - name: connect
+      port: 8289
+      targetPort: 8289   # numeric targetPort
 
 # ✅ ALB Ingress configuration
-# ALB Ingress configuration
 ingress:
   enabled: true
   className: "alb"
@@ -70,7 +74,6 @@ ingress:
     - secretName: inngest-tls
       hosts:
         - devopslogs.com
-
 
 # Resources (optional)
 resources: {}
@@ -131,7 +134,7 @@ postgresql:
   persistence:
     enabled: true
     size: 8Gi
-    storageClass: "gp2"   # Match your AWS EBS storage class
+    storageClass: "gp2"
     accessModes:
       - ReadWriteOnce
 
