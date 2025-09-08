@@ -44,7 +44,7 @@ service:
   port: 8288
   connPort: 8289
 
-# ALB Ingress configuration
+# ✅ ALB Ingress configuration
 ingress:
   enabled: true
   className: "alb"
@@ -60,8 +60,13 @@ ingress:
   hosts:
     - host: devopslogs.com
       paths:
-        - path: /inngest/
+        - path: /inngest
           pathType: Prefix
+          backend:
+            service:
+              name: inngest
+              port:
+                number: 8288
   tls:
     - secretName: inngest-tls
       hosts:
