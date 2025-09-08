@@ -45,36 +45,29 @@ service:
   connPort: 8289
 
 # ALB Ingress configuration
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: inngest-ingress
-  namespace: inngest
+ingress:
+  enabled: true
+  className: alb
   annotations:
     kubernetes.io/ingress.class: alb
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80},{"HTTPS":443}]'
-    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-east-1:180294213274:certificate/80474a93-77c2-4f5b-be79-dd10961904f8
+    alb.ingress.kubernetes.io/certificate-arn: <your-cert-arn>
     alb.ingress.kubernetes.io/actions.inngest-rewrite: >
       {"Type":"forward","ForwardConfig":{"TargetGroups":[{"ServiceName":"ps-ingestion-service","ServicePort":"8288"}]}}
-spec:
-  rules:
+  hosts:
     - host: devopslogs.com
-      http:
-        paths:
-          - path: /inngest/*
-            pathType: ImplementationSpecific
-            # Important: When using ALB actions, backend is replaced with "serviceName/use-annotation"
-            backend:
-              service:
-                name: inngest-rewrite
-                port:
-                  name: use-annotation
+      paths:
+        - path: /inngest/*
+          pathType: ImplementationSpecific
+          serviceName: inngest-rewrite
+          servicePort: use-annotation
   tls:
-    - hosts:
+    - secretName: inngest-tls
+      hosts:
         - devopslogs.com
-      secretName: inngest-tls
+
 # Resources
 resources: {}
 
