@@ -38,25 +38,21 @@ securityContext:
     drop:
       - ALL
 
-# Deployment container ports ✅ Fixed
-containerPorts:
-  - name: http
-    containerPort: 8288
-  - name: connect
-    containerPort: 8289
-
-# Kubernetes Service ✅ Fixed numeric ports
+# Kubernetes Service
 service:
   type: ClusterIP
-  ports:
-    - name: http
-      port: 8288
-      targetPort: 8288
-    - name: connect
-      port: 8289
-      targetPort: 8289
+  port: 8288        # Main HTTP port
+  connPort: 8289    # Connect gateway port
 
-# ALB Ingress configuration ✅ Fixed numeric port backend
+# Deployment container ports (matches service)
+deployment:
+  containerPorts:
+    - name: http
+      containerPort: 8288
+    - name: connect
+      containerPort: 8289
+
+# ALB Ingress configuration
 ingress:
   enabled: true
   className: "alb"
