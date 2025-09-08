@@ -6,9 +6,6 @@ image:
   repository: inngest/inngest
   pullPolicy: IfNotPresent
   tag: "latest"  # ⚠️ In prod: pin to a specific version
-  ports:
-    - containerPort: 8288   # HTTP
-    - containerPort: 8289   # Connect gateway
 
 # Kubernetes namespace
 namespace:
@@ -45,12 +42,14 @@ securityContext:
 service:
   type: ClusterIP
   ports:
-    - port: 8288
+    - name: http
+      port: 8288
       targetPort: 8288
-    - port: 8289
+    - name: connect
+      port: 8289
       targetPort: 8289
 
-# ALB Ingress configuration
+# ✅ ALB Ingress configuration
 ingress:
   enabled: true
   className: "alb"
@@ -167,24 +166,10 @@ redis:
 # KEDA (disabled)
 keda:
   enabled: false
-  minReplicas: 1
-  maxReplicas: 10
-  pollingInterval: 30
-  cooldownPeriod: 300
-  scaleTargetRef:
-    name: inngest
-  triggers:
-    - type: prometheus
-      metadata:
-        metricName: inngest_queue_depth
-        threshold: "10"
-        query: inngest_queue_depth
 
 # Network policies
 networkPolicy:
   enabled: false
-  ingress: []
-  egress: []
 
 # Prometheus sidecar (for KEDA)
 prometheus:
