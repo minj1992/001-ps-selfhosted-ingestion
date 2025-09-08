@@ -38,14 +38,14 @@ securityContext:
     drop:
       - ALL
 
-# Kubernetes Service
-service:
-  type: ClusterIP
-  port: 8288     # ✅ Must be numeric
-  connPort: 8289 # ✅ Must be numeric
-
-# Deployment container ports
+# Deployment container ports ✅ Fixed
 containerPorts:
+  - name: http
+    containerPort: 8288
+  - name: connect
+    containerPort: 8289
+
+# Kubernetes Service ✅ Fixed numeric ports
 service:
   type: ClusterIP
   ports:
@@ -56,8 +56,7 @@ service:
       port: 8289
       targetPort: 8289
 
-
-# ALB Ingress configuration
+# ALB Ingress configuration ✅ Fixed numeric port backend
 ingress:
   enabled: true
   className: "alb"
@@ -80,7 +79,6 @@ ingress:
               name: inngest
               port:
                 number: 8288
-
   tls:
     - secretName: inngest-tls
       hosts:
@@ -95,8 +93,8 @@ affinity: {}
 
 # Inngest configuration
 inngest:
-  eventKey: "0123456789abcdef0123456789abcdef"
-  signingKey: "fedcba9876543210fedcba9876543210"
+  eventKey: "0123456789abcdef0123456789abcdef"      # ⚠️ Replace with your secure hex key
+  signingKey: "fedcba9876543210fedcba9876543210"    # ⚠️ Replace with your secure hex key
   config: ""
   host: ""
   port: "8288"
@@ -132,7 +130,7 @@ postgresql:
   auth:
     database: inngest
     username: inngest
-    password: secure_password
+    password: secure_password   # ⚠️ Change for production
   service:
     port: 5432
   resources:
