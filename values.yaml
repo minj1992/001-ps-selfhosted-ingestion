@@ -6,6 +6,11 @@ image:
   repository: inngest/inngest
   pullPolicy: IfNotPresent
   tag: "latest"  # ⚠️ In prod: pin to a specific version
+  ports:
+    - name: http
+      containerPort: 8288
+    - name: connect
+      containerPort: 8289
 
 # Kubernetes namespace
 namespace:
@@ -44,10 +49,10 @@ service:
   ports:
     - name: http
       port: 8288
-      targetPort: 8288   # numeric targetPort
+      targetPort: 8288
     - name: connect
       port: 8289
-      targetPort: 8289   # numeric targetPort
+      targetPort: 8289
 
 # ✅ ALB Ingress configuration
 ingress:
@@ -68,8 +73,10 @@ ingress:
         - path: /inngest
           pathType: ImplementationSpecific
           backend:
-            serviceName: inngest
-            servicePort: 8288
+            service:
+              name: inngest
+              port:
+                number: 8288
   tls:
     - secretName: inngest-tls
       hosts:
@@ -134,7 +141,7 @@ postgresql:
   persistence:
     enabled: true
     size: 8Gi
-    storageClass: "gp2"
+    storageClass: "gp2"   # Match your AWS EBS storage class
     accessModes:
       - ReadWriteOnce
 
@@ -194,7 +201,4 @@ prometheus:
   resources:
     limits:
       cpu: 100m
-      memory: 128Mi
-    requests:
-      cpu: 50m
-      memory: 64Mi
+      memory: 128
