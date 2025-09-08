@@ -1,152 +1,243 @@
+# Default configuration for Inngest Self-Hosted Helm Chart
+# This file contains all configurable values with their defaults.
+# Override these values in your own values file or with --set flags.
+
 # Number of Inngest application replicas
+# When KEDA is enabled, this serves as the baseline before scaling
 replicaCount: 1
 
-# Container image
+# Container image configuration
 image:
-  repository: inngest/inngest
-  pullPolicy: IfNotPresent
-  tag: "latest"
+  repository: inngest/inngest # Docker image repository
+  pullPolicy: IfNotPresent # Image pull policy (Always, Never, IfNotPresent)
+  tag: "latest" # Image tag - CHANGE to specific version for production
 
-# Kubernetes namespace
+# Secrets for pulling private images (if needed)
+imagePullSecrets: []
+
+# Kubernetes namespace configuration
 namespace:
-  create: true
-  name: "inngest"
+  create: true # Whether to create the namespace
+  name: "inngest" # Namespace name - consistent across all resources
 
-# ServiceAccount
+# ServiceAccount configuration
 serviceAccount:
-  create: true
-  annotations: {}
-  name: ""
+  create: true # Whether to create a service account
+  annotations: {} # Annotations to add to the service account
+  name: "" # Name of service account (uses default if empty)
 
-# Pod annotations
+# Additional annotations for pods (e.g., for service mesh, monitoring)
 podAnnotations: {}
 
-# Pod security context
+# Pod-level security context - applies to all containers in the pod
+# These settings enhance security by running as non-root user
 podSecurityContext:
-  runAsNonRoot: true
-  runAsUser: 1000
-  runAsGroup: 1000
-  fsGroup: 1000
+  runAsNonRoot: true # Prevent running as root user
+  runAsUser: 1000 # Run as specific user ID
+  runAsGroup: 1000 # Run as specific group ID
+  fsGroup: 1000 # File system group for mounted volumes
 
-# Container security context
+# Container-level security context - applies to individual containers
+# These settings provide defense-in-depth security
 securityContext:
-  allowPrivilegeEscalation: false
-  readOnlyRootFilesystem: true
-  runAsNonRoot: true
-  runAsUser: 1000
+  allowPrivilegeEscalation: false # Prevent privilege escalation
+  readOnlyRootFilesystem: true # Make root filesystem read-only
+  runAsNonRoot: true # Enforce non-root execution
+  runAsUser: 1000 # Specific user ID
   capabilities:
     drop:
-      - ALL
+      - ALL # Drop all Linux capabilities
 
-# Kubernetes Service
+# Kubernetes Service configuration
 service:
-  type: ClusterIP
-  port: 8288
-  connPort: 8289
+  type: ClusterIP # Service type (ClusterIP, NodePort, LoadBalancer)
+  port: 8288 # Main Inngest API and UI port
+  connPort: 8289 # Inngest Connect service port for function registration
 
-# ALB Ingress configuration
+# Ingress configuration for external access
 ingress:
-  enabled: true
-  className: alb
+  enabled: false # Set to true to enable ingress
+  className: "nginx" # Ingress class (e.g., "nginx", "traefik")
   annotations:
-    kubernetes.io/ingress.class: alb
-    alb.ingress.kubernetes.io/scheme: internet-facing
-    alb.ingress.kubernetes.io/target-type: ip
-    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80},{"HTTPS":443}]'
-    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-east-1:180294213274:certificate/80474a93-77c2-4f5b-be79-dd10961904f8
-    alb.ingress.kubernetes.io/actions.ssl-redirect: >
-      {"Type": "redirect", "RedirectConfig": { "Protocol": "HTTPS", "Port": "443", "StatusCode": "HTTP_301"}}
+    # Let's Encrypt annotations for automatic SSL certificate provisioning
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    # Use letsencrypt-staging for testing, letsencrypt-prod for production
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
   hosts:
-    - host: devopslogs.com
+    - host: chart-example.local # Change to your domain
       paths:
-        - path: /inngest
+        - path: /
           pathType: Prefix
   tls:
-    - secretName: inngest-tls
+    - secretName: inngest-tls # Secret name for TLS certificate
       hosts:
-        - devopslogs.com
+        - chart-example.local # Change to your domain
 
-# Resources
-resources: {}
+# Resource limits and requests for the main Inngest container
+# IMPORTANT: Set appropriate limits for production use
+resources:
+  {}
+  # limits:
+  #   cpu: 1000m
+  #   memory: 1Gi
+  # requests:
+  #   cpu: 500m
+  #   memory: 512Mi
 
+# Standard HPA autoscaling is disabled - use KEDA for metrics-based scaling
+
+# Node selection constraints
 nodeSelector: {}
+
+# Tolerations for node taints
 tolerations: []
+
+# Pod affinity/anti-affinity rules
 affinity: {}
 
-# Inngest configuration
+# Inngest application configuration
+# These values map directly to Inngest environment variables
 inngest:
-  eventKey: "0123456789abcdef0123456789abcdef"
-  signingKey: "fedcba9876543210fedcba9876543210"
-  host: ""
-  port: "8288"
-  connectGatewayPort: 8289
-  noUI: false
-  queueWorkers: 100
-  pollInterval: 60
-  retryInterval: 1
-  tick: 150
-  json: false
-  logLevel: info
-  verbose: false
+  # REQUIRED: Authentication keys for Inngest
+  eventKey: "" # Event key for sending events to Inngest (INNGEST_EVENT_KEY)
+  signingKey: "" # Signing key for validating requests (INNGEST_SIGNING_KEY)
 
-  # Internal Postgres connection
+  # Optional configuration
+  config: "" # Path to Inngest configuration file (INNGEST_CONFIG)
+  host: "" # Server hostname (INNGEST_HOST)
+  port: "8288" # Server port (INNGEST_PORT)
+  sdkUrl: [] # App serve URLs for function sync (INNGEST_SDK_URL)
+
+  # Service configuration
+  connectGatewayPort: 8289 # Connect gateway port (INNGEST_CONNECT_GATEWAY_PORT)
+  noUI: false # Disable web UI (INNGEST_NO_UI)
+
+  # Performance tuning
+  pollInterval: 60 # Polling interval for app updates in seconds (INNGEST_POLL_INTERVAL)
+  queueWorkers: 100 # Number of executor workers (INNGEST_QUEUE_WORKERS)
+  retryInterval: 1 # Retry interval for linear backoff (INNGEST_RETRY_INTERVAL)
+  tick: 150 # Executor queue polling interval in ms (INNGEST_TICK)
+
+  # Logging configuration
+  json: false # Output logs as JSON (INNGEST_JSON)
+  logLevel: "info" # Log level: trace, debug, info, warn, error (INNGEST_LOG_LEVEL)
+  verbose: false # Enable verbose logging (INNGEST_VERBOSE)
+
+  # Database configuration - use external databases
   postgres:
-    uri: "postgresql://inngest:secure_password@inngest-postgresql:5432/inngest"
+    uri: "" # External PostgreSQL URI (INNGEST_POSTGRES_URI)
 
-  # Internal Redis connection
   redis:
-    uri: "redis://inngest-redis:6379"
+    uri: "" # External Redis URI (INNGEST_REDIS_URI)
 
-# Internal PostgreSQL
+  sqlite:
+    dir: "" # SQLite directory path (INNGEST_SQLITE_DIR)
+
+# Internal PostgreSQL database configuration
+# Set enabled: false to use external PostgreSQL (configure inngest.postgres.uri)
 postgresql:
-  enabled: true
+  enabled: true # Deploy internal PostgreSQL instance
   image:
-    repository: postgres
-    tag: "17"
+    repository: postgres # PostgreSQL Docker image
+    tag: "17" # PostgreSQL version
     pullPolicy: IfNotPresent
+
+  # Database authentication (stored in Kubernetes Secret for security)
   auth:
-    database: inngest
-    username: inngest
-    password: secure_password
-  service:
-    port: 5432
-  persistence:
-    enabled: true
-    size: 8Gi
-    storageClass: gp2
-    accessModes:
-      - ReadWriteOnce
+    database: inngest # Database name
+    username: inngest # Database username
+    password: password # Database password - CHANGE for production
 
-# Internal Redis
+  service:
+    port: 5432 # PostgreSQL service port
+
+  # Resource management for PostgreSQL
+  resources:
+    limits:
+      cpu: 1000m # 1 CPU core limit
+      memory: 1Gi # 1GB memory limit
+    requests:
+      cpu: 100m # 100m CPU request
+      memory: 256Mi # 256MB memory request
+
+  # Persistent storage configuration
+  persistence:
+    enabled: true # Enable persistent storage
+    size: 8Gi # Storage size - increase for production
+    storageClass: "" # Storage class (uses default if empty)
+    accessModes:
+      - ReadWriteOnce # Access mode for the volume
+
+# Internal Redis cache configuration
+# Set enabled: false to use external Redis (configure inngest.redis.uri)
 redis:
-  enabled: true
+  enabled: true # Deploy internal Redis instance
   image:
-    repository: redis
-    tag: "7-alpine"
+    repository: redis # Redis Docker image
+    tag: "7-alpine" # Redis version
     pullPolicy: IfNotPresent
+
   service:
-    port: 6379
+    port: 6379 # Redis service port
+
+  # Resource management for Redis
+  resources:
+    limits:
+      cpu: 500m # 500m CPU limit
+      memory: 512Mi # 512MB memory limit
+    requests:
+      cpu: 100m # 100m CPU request
+      memory: 128Mi # 128MB memory request
+
+  # Persistent storage for Redis data
   persistence:
-    enabled: true
-    size: 8Gi
-    storageClass: gp2
+    enabled: true # Enable persistent storage
+    size: 8Gi # Storage size - adjust based on needs
+    storageClass: "" # Storage class (uses default if empty)
     accessModes:
-      - ReadWriteOnce
+      - ReadWriteOnce # Access mode for the volume
 
-
-# KEDA (optional autoscaling)
+# KEDA autoscaling configuration
+# Uses Prometheus sidecar to scrape Inngest metrics for scaling decisions
 keda:
-  enabled: false
-  minReplicas: 1
-  maxReplicas: 10
-  pollingInterval: 30
-  cooldownPeriod: 300
+  enabled: false # Enable KEDA-based autoscaling
+  minReplicas: 1 # Minimum number of replicas
+  maxReplicas: 10 # Maximum number of replicas
+  pollingInterval: 30 # How often to check metrics (seconds)
+  cooldownPeriod: 300 # Cooldown period after scaling (seconds)
   scaleTargetRef:
-    name: inngest
+    name: inngest # Target deployment to scale
   triggers:
-    - type: prometheus
+    - type: prometheus # Use Prometheus scaler (via sidecar)
       metadata:
-        metricName: inngest_queue_depth
-        threshold: "10"
-        query: inngest_queue_depth
+        metricName: inngest_queue_depth # Metric name for scaling
+        threshold: "10" # Scale up when > 10 items in queue
+        query: inngest_queue_depth # Prometheus query
 
+# Network policies for additional security isolation
+networkPolicy:
+  enabled: false # Enable network policies
+  ingress: [] # Custom ingress rules
+  egress: [] # Custom egress rules
+
+# Prometheus sidecar configuration (only used when keda.enabled is true)
+# This sidecar scrapes Inngest metrics and provides a Prometheus API for KEDA
+prometheus:
+  image:
+    repository: prom/prometheus # Prometheus Docker image
+    tag: "v2.45.0" # Prometheus version
+    pullPolicy: IfNotPresent
+
+  # Prometheus scrape configuration
+  scrapeInterval: "15s" # How often to scrape metrics
+  evaluationInterval: "15s" # How often to evaluate rules
+
+  # Resource limits for the Prometheus sidecar
+  # Keep these lightweight since it's only for KEDA metrics
+  resources:
+    limits:
+      cpu: 100m # CPU limit
+      memory: 128Mi # Memory limit
+    requests:
+      cpu: 50m # CPU request
+      memory: 64Mi # Memory request
