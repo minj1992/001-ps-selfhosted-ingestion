@@ -54,13 +54,12 @@ ingress:
     alb.ingress.kubernetes.io/target-type: ip
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80},{"HTTPS":443}]'
     alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-east-1:180294213274:certificate/80474a93-77c2-4f5b-be79-dd10961904f8
-    alb.ingress.kubernetes.io/load-balancer-arn: arn:aws:elasticloadbalancing:us-east-1:180294213274:loadbalancer/app/k8s-argocd-argocdse-c5d356d97e/868b402e3416b7dc
-    alb.ingress.kubernetes.io/actions.forward-to-app: >
-      {"Type":"forward","TargetGroups":[{"ServiceName":"inngest","ServicePort":"8288"}]}
-    alb.ingress.kubernetes.io/conditions.forward-to-app: >
-      [{"Field":"path-pattern","PathPatternConfig":{"Values":["/inngest/*"]}}]
     alb.ingress.kubernetes.io/actions.ssl-redirect: >
       {"Type": "redirect", "RedirectConfig": { "Protocol": "HTTPS", "Port": "443", "StatusCode": "HTTP_301"}}
+    alb.ingress.kubernetes.io/actions.rewrite-root: >
+      {"Type":"forward","TargetGroups":[{"ServiceName":"inngest","ServicePort":"8288"}]}
+    alb.ingress.kubernetes.io/conditions.rewrite-root: >
+      [{"Field":"path-pattern","PathPatternConfig":{"Values":["/inngest/*"]}}]
   hosts:
     - host: devopslogs.com
       paths:
