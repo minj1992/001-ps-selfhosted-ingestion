@@ -5,7 +5,7 @@ replicaCount: 1
 image:
   repository: inngest/inngest
   pullPolicy: IfNotPresent
-  tag: "latest"  # ⚠️ In prod: pin to a specific version
+  tag: "latest"
 
 # Kubernetes namespace
 namespace:
@@ -47,7 +47,7 @@ service:
 # ALB Ingress configuration
 ingress:
   enabled: true
-  className: "alb"
+  className: alb
   annotations:
     kubernetes.io/ingress.class: alb
     alb.ingress.kubernetes.io/scheme: internet-facing
@@ -56,26 +56,17 @@ ingress:
     alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-east-1:180294213274:certificate/80474a93-77c2-4f5b-be79-dd10961904f8
     alb.ingress.kubernetes.io/actions.ssl-redirect: >
       {"Type": "redirect", "RedirectConfig": { "Protocol": "HTTPS", "Port": "443", "StatusCode": "HTTP_301"}}
-    alb.ingress.kubernetes.io/actions.rewrite-root: >
-      {"Type":"forward","TargetGroups":[{"ServiceName":"inngest","ServicePort":"8288"}]}
-    alb.ingress.kubernetes.io/conditions.rewrite-root: >
-      [{"Field":"path-pattern","PathPatternConfig":{"Values":["/inngest/*"]}}]
   hosts:
     - host: devopslogs.com
       paths:
-        - path: /inngest/*
+        - path: /inngest
           pathType: Prefix
-          backend:
-            service:
-              name: inngest
-              port:
-                number: 8288
   tls:
     - secretName: inngest-tls
       hosts:
         - devopslogs.com
 
-# Resources (optional)
+# Resources
 resources: {}
 
 nodeSelector: {}
@@ -84,20 +75,18 @@ affinity: {}
 
 # Inngest configuration
 inngest:
-  eventKey: "0123456789abcdef0123456789abcdef"      # ⚠️ Replace with your secure hex key
-  signingKey: "fedcba9876543210fedcba9876543210"    # ⚠️ Replace with your secure hex key
-  config: ""
+  eventKey: "0123456789abcdef0123456789abcdef"
+  signingKey: "fedcba9876543210fedcba9876543210"
   host: ""
   port: "8288"
-  sdkUrl: []
   connectGatewayPort: 8289
   noUI: false
-  pollInterval: 60
   queueWorkers: 100
+  pollInterval: 60
   retryInterval: 1
   tick: 150
   json: false
-  logLevel: "info"
+  logLevel: info
   verbose: false
 
   # Internal Postgres connection
@@ -107,9 +96,6 @@ inngest:
   # Internal Redis connection
   redis:
     uri: "redis://inngest-redis:6379"
-
-  sqlite:
-    dir: ""
 
 # Internal PostgreSQL
 postgresql:
@@ -121,20 +107,13 @@ postgresql:
   auth:
     database: inngest
     username: inngest
-    password: secure_password   # ⚠️ Change for production
+    password: secure_password
   service:
     port: 5432
-  resources:
-    limits:
-      cpu: 1000m
-      memory: 1Gi
-    requests:
-      cpu: 100m
-      memory: 256Mi
   persistence:
     enabled: true
     size: 8Gi
-    storageClass: "gp2"   # Match your AWS EBS storage class
+    storageClass: gp2
     accessModes:
       - ReadWriteOnce
 
@@ -147,54 +126,9 @@ redis:
     pullPolicy: IfNotPresent
   service:
     port: 6379
-  resources:
-    limits:
-      cpu: 500m
-      memory: 512Mi
-    requests:
-      cpu: 100m
-      memory: 128Mi
   persistence:
     enabled: true
     size: 8Gi
-    storageClass: "gp2"
+    storageClass: gp2
     accessModes:
       - ReadWriteOnce
-
-# KEDA (disabled)
-keda:
-  enabled: false
-  minReplicas: 1
-  maxReplicas: 10
-  pollingInterval: 30
-  cooldownPeriod: 300
-  scaleTargetRef:
-    name: inngest
-  triggers:
-    - type: prometheus
-      metadata:
-        metricName: inngest_queue_depth
-        threshold: "10"
-        query: inngest_queue_depth
-
-# Network policies
-networkPolicy:
-  enabled: false
-  ingress: []
-  egress: []
-
-# Prometheus sidecar (for KEDA)
-prometheus:
-  image:
-    repository: prom/prometheus
-    tag: "v2.45.0"
-    pullPolicy: IfNotPresent
-  scrapeInterval: "15s"
-  evaluationInterval: "15s"
-  resources:
-    limits:
-      cpu: 100m
-      memory: 128Mi
-    requests:
-      cpu: 50m
-      memory: 64Mi
