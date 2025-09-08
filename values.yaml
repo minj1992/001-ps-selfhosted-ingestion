@@ -41,15 +41,10 @@ securityContext:
 # Kubernetes Service
 service:
   type: ClusterIP
-  ports:
-    - name: http
-      port: 8288
-      targetPort: 8288
-    - name: connect
-      port: 8289
-      targetPort: 8289
+  port: 8288
+  connPort: 8289
 
-# ✅ ALB Ingress configuration
+# ALB Ingress configuration
 ingress:
   enabled: true
   className: "alb"
@@ -65,13 +60,8 @@ ingress:
   hosts:
     - host: devopslogs.com
       paths:
-        - path: /inngest
-          pathType: ImplementationSpecific
-          backend:
-            service:
-              name: inngest
-              port:
-                number: 8288
+        - path: /inngest/
+          pathType: Prefix
   tls:
     - secretName: inngest-tls
       hosts:
@@ -136,7 +126,7 @@ postgresql:
   persistence:
     enabled: true
     size: 8Gi
-    storageClass: "gp2"
+    storageClass: "gp2"   # Match your AWS EBS storage class
     accessModes:
       - ReadWriteOnce
 
@@ -166,10 +156,24 @@ redis:
 # KEDA (disabled)
 keda:
   enabled: false
+  minReplicas: 1
+  maxReplicas: 10
+  pollingInterval: 30
+  cooldownPeriod: 300
+  scaleTargetRef:
+    name: inngest
+  triggers:
+    - type: prometheus
+      metadata:
+        metricName: inngest_queue_depth
+        threshold: "10"
+        query: inngest_queue_depth
 
 # Network policies
 networkPolicy:
   enabled: false
+  ingress: []
+  egress: []
 
 # Prometheus sidecar (for KEDA)
 prometheus:
