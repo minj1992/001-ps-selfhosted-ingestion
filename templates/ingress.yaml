@@ -1,24 +1,50 @@
+{{/*
+Inngest ALB Ingress
+Kubernetes Ingress resource for external access to Inngest services using AWS ALB.
+Only created when ingress.enabled is true.
+
+This ingress provides:
+- External HTTP/HTTPS access to the Inngest UI and API (port 8288)
+- ALB actions for path forwarding
+- TLS termination support
+- Kubernetes 1.20+ networking.k8s.io/v1 API
+
+Note: ALB does not natively rewrite paths like NGINX. Requests to /inngest/* are forwarded
+to the service as-is. If Inngest expects root path "/", you may need a sidecar reverse proxy
+or configure Inngest to serve under /inngest base path.
+*/}}
 {{- if .Values.ingress.enabled -}}
 {{- $fullName := include "inngest.fullname" . -}}
 {{- $svcPort := .Values.service.port -}}
-{{- if and .Values.ingress.className (not (hasKey .Values.ingress.annotations "kubernetes.io/ingress.class")) }}
-  {{- $_ := set .Values.ingress.annotations "kubernetes.io/ingress.class" .Values.ingress.className }}
-{{- end }}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ $fullName }}
+  name: {{ $fullName }}-ingress
   namespace: {{ .Values.namespace.name }}
   labels:
     {{- include "inngest.labels" . | nindent 4 }}
-  {{- with .Values.ingress.annotations }}
   annotations:
+    {{- with .Values.ingress.annotations }}
     {{- toYaml . | nindent 4 }}
-  {{- end }}
+    {{- end }}
 spec:
   {{- if .Values.ingress.className }}
   ingressClassName: {{ .Values.ingress.className }}
   {{- end }}
+  rules:
+    {{- range .Values.ingress.hosts }}
+    - host: {{ .host | quote }}
+      http:
+        paths:
+          {{- range .paths }}
+          - path: {{ .path }}
+            pathType: {{ .pathType | default "ImplementationSpecific" }}
+            service:
+              name: {{ .serviceName | default "inngest-rewrite" }}
+              port:
+                name: {{ .servicePort | default "use-annotation" }}
+          {{- end }}
+    {{- end }}
   {{- if .Values.ingress.tls }}
   tls:
     {{- range .Values.ingress.tls }}
@@ -29,19 +55,4 @@ spec:
       secretName: {{ .secretName }}
     {{- end }}
   {{- end }}
-  rules:
-    {{- range .Values.ingress.hosts }}
-    - host: {{ .host | quote }}
-      http:
-        paths:
-          {{- range .paths }}
-          - path: {{ .path }}   # no trailing slash
-            pathType: Prefix
-            backend:
-              service:
-                name: {{ $fullName }}
-                port:
-                  number: {{ $svcPort }}
-          {{- end }}
-    {{- end }}
 {{- end }}
