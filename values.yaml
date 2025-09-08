@@ -60,7 +60,7 @@ ingress:
   hosts:
     - host: devopslogs.com
       paths:
-        - path: /inngest/*
+        - path: /inngest/
           pathType: Prefix
   tls:
     - secretName: inngest-tls
