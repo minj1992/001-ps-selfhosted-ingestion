@@ -132,3 +132,21 @@ redis:
     storageClass: gp2
     accessModes:
       - ReadWriteOnce
+
+
+# KEDA (optional autoscaling)
+keda:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 10
+  pollingInterval: 30
+  cooldownPeriod: 300
+  scaleTargetRef:
+    name: inngest
+  triggers:
+    - type: prometheus
+      metadata:
+        metricName: inngest_queue_depth
+        threshold: "10"
+        query: inngest_queue_depth
+
