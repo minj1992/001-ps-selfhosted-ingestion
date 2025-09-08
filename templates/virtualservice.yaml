@@ -8,7 +8,9 @@ metadata:
     {{- include "inngest.labels" . | nindent 4 }}
 spec:
   hosts:
-    - {{ .Values.ingress.hosts[0].host | quote }}
+    {{- range .Values.ingress.hosts }}
+    - {{ .host | quote }}
+    {{- end }}
   gateways:
     # This should be the name of your Istio gateway, e.g., "istio-system/ingressgateway"
     # You might need to create a Gateway resource for your host.
