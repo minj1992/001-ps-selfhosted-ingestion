@@ -46,7 +46,7 @@ service:
 
 # ALB Ingress configuration
 ingress:
-  enabled: true
+  enabled: false
   className: alb
   annotations:
     "kubernetes.io/ingress.class": alb

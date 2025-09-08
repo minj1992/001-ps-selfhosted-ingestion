@@ -12,7 +12,7 @@ spec:
     - {{ .host | quote }}
     {{- end }}
   gateways:
-    - inngest-gateway
+    - main-gateway
   http:
     - match:
         - uri:
