@@ -46,10 +46,16 @@ service:
 
 # Deployment container ports
 containerPorts:
-  - name: http
-    containerPort: 8288   # ✅ Required by Kubernetes
-  - name: connect
-    containerPort: 8289
+service:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 8288
+      targetPort: 8288
+    - name: connect
+      port: 8289
+      targetPort: 8289
+
 
 # ALB Ingress configuration
 ingress:
