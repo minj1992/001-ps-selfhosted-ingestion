@@ -5,7 +5,7 @@ replicaCount: 1
 image:
   repository: inngest/inngest
   pullPolicy: IfNotPresent
-  tag: "latest"
+  tag: "latest"  # ⚠️ Pin in production
 
 # Kubernetes namespace
 namespace:
@@ -49,23 +49,20 @@ ingress:
   enabled: true
   className: alb
   annotations:
-    kubernetes.io/ingress.class: alb
-    alb.ingress.kubernetes.io/scheme: internet-facing
-    alb.ingress.kubernetes.io/target-type: ip
-    alb.ingress.kubernetes.io/listen-ports:
-      - HTTP: 80
-      - HTTPS: 443
-    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-east-1:180294213274:certificate/80474a93-77c2-4f5b-be79-dd10961904f8
+    "kubernetes.io/ingress.class": alb
+    "alb.ingress.kubernetes.io/scheme": internet-facing
+    "alb.ingress.kubernetes.io/target-type": ip
+    "alb.ingress.kubernetes.io/listen-ports": '[{"HTTP":80},{"HTTPS":443}]'
+    "alb.ingress.kubernetes.io/certificate-arn": arn:aws:acm:us-east-1:180294213274:certificate/80474a93-77c2-4f5b-be79-dd10961904f8
   hosts:
     - host: devopslogs.com
       paths:
-        - path: /inngest/*
+        - path: "/inngest/*"
           pathType: ImplementationSpecific
   tls:
     - secretName: inngest-tls
       hosts:
         - devopslogs.com
-
 
 
 # Resources

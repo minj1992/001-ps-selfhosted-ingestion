@@ -1,4 +1,4 @@
-{{- if .Values.ingress.enabled -}}
+{{- if .Values.ingress.enabled }}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -6,23 +6,23 @@ metadata:
   namespace: {{ .Values.namespace.name }}
   labels:
     {{- include "inngest.labels" . | nindent 4 }}
-  annotations:
-    {{- with .Values.ingress.annotations }}
-    {{- toYaml . | nindent 4 }}
-    {{- end }}
-spec:
-  ingressClassName: {{ .Values.ingress.className }}
+    annotations:
+    {{- toYaml .Values.ingress.annotations | nindent 4 }}
   rules:
-    - host: {{ .Values.ingress.hosts[0].host | quote }}
+    {{- range .Values.ingress.hosts }}
+    - host: {{ .host | quote }}
       http:
         paths:
-          - path: /inngest/*
-            pathType: ImplementationSpecific
+          {{- range .paths }}
+          - path: {{ .path | quote }}
+            pathType: {{ .pathType | quote }}
             backend:
               service:
-                name: ps-ingestion-service   # actual Inngest service
+                name: ps-ingestion-service
                 port:
-                  number: 8288
+                  number: {{ $.Values.service.port }}
+          {{- end }}
+    {{- end }}
   {{- if .Values.ingress.tls }}
   tls:
     {{- range .Values.ingress.tls }}
@@ -30,7 +30,7 @@ spec:
         {{- range .hosts }}
         - {{ . | quote }}
         {{- end }}
-      secretName: {{ .secretName }}
+      secretName: {{ .secretName | quote }}
     {{- end }}
   {{- end }}
 {{- end }}
