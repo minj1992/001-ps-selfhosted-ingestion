@@ -68,8 +68,10 @@ affinity: {}
 
 # ✅ Inngest configuration
 inngest:
-  eventKey: "abcd1234abcd1234abcd1234abcd1234"    # ⚠️ Replace with valid key
-  signingKey: "efgh5678efgh5678efgh5678efgh5678"  # ⚠️ Replace with valid key
+  inngest:
+  eventKey: "abcd1234abcd1234abcd1234abcd1234"
+  signingKey: "efab5678efab5678efab5678efab5678"
+
   config: ""
   host: ""
   port: "8288"
