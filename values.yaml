@@ -67,13 +67,14 @@ ingress:
   hosts:
     - host: devopslogs.com
       paths:
-        - path: /inngest
-          pathType: ImplementationSpecific
+        - path: /inngest/
+          pathType: Prefix
           backend:
             service:
               name: inngest
               port:
-                number: 8288  # ✅ Numeric port required
+                number: 8288
+
   tls:
     - secretName: inngest-tls
       hosts:
