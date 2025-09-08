@@ -24,7 +24,7 @@ spec:
               service:
                 name: {{ .serviceName | default "inngest-rewrite" }}
                 port:
-                  name: use-annotation
+                  number: {{ .servicePort | default 80 }}
           {{- end }}
     {{- end }}
   {{- if .Values.ingress.tls }}
